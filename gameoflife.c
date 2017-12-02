@@ -86,12 +86,14 @@ void evolve(char *currentfield, char *newfield, int width, int height)
 {
   // TODO traverse through each voxel and implement game of live logic
   // HINT: avoid boundaries
-  int neighbors = 0;
+
   for (int y = 1; y <= height - 2; y++)
   {
-    #pragma omp parallel for private{neighbors}
-    for (int x = 1; x <= width - 2; x++)
+    int x;
+    #pragma omp parallel for private(x)
+    for (x = 1; x <= width - 2; x++)
     {
+      int neighbors = 0;     
       int xy_index = calcIndex(width, x, y);
       for (int j = y - 1; j <= y + 1; j++)
       {
@@ -112,7 +114,6 @@ void evolve(char *currentfield, char *newfield, int width, int height)
         newfield[xy_index] = DEAD;
       //if (neighbors > 0)
       //  printf("cell %d,%d has %d neighbors.\n", x,y,neighbors);
-      neighbors = 0;
     }
   }
 }
@@ -181,7 +182,7 @@ void game(int width, int height, int num_timesteps)
     {
       ci = calcIndex(width, x, height - 2);
       ni = calcIndex(width, x, 0);
-      newfield[ni] = newfield[ci];h
+      newfield[ni] = newfield[ci];
       ci = calcIndex(width, x, 1);
       ni = calcIndex(width, x, height - 1);
       newfield[ni] = newfield[ci];
@@ -189,11 +190,10 @@ void game(int width, int height, int num_timesteps)
 
     write_field(newfield, width, height, time);
 
-     // SWAP of the fields
+    // SWAP of the fields
     char *temp = currentfield;
     currentfield = newfield;
     newfield = temp;
-
   }
 
   free(currentfield);

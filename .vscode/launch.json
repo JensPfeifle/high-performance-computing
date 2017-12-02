@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/gameoflife",
-            "args": ["25", "25", "100"],
+            "args": ["256", "256", "100"],
             "stopAtEntry": false,
             "preLaunchTask": "build gameoflife",
             "cwd": "${workspaceFolder}",
