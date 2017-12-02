@@ -84,13 +84,14 @@ void write_field(char *currentfield, int width, int height, int timestep)
 
 void evolve(char *currentfield, char *newfield, int width, int height, int regions_x, int regions_y)
 {
-  // TODO traverse through each voxel and implement game of live logic
+  // TODO traverse through each voxel and implement game of life logic
   // HINT: avoid boundaries
 
 
-  int region_width = width / regions_x;
-  int region_height = height / regions_y;
+  int region_width = (width-2) / regions_x;
+  int region_height = (height-2) / regions_y;
   int omp_threads = regions_x * regions_y;
+  printf("DEBUG: evolving with %d threads.\n", omp_threads);
   #pragma omp parallel num_threads(omp_threads)
   {
     int this_thread = omp_get_thread_num();
