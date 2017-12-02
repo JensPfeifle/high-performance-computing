@@ -19,7 +19,7 @@
             "problemMatcher": "$msCompile"
         },
         {
-            "label": "build gameoflife",
+            "label": "build ompgameoflife",
             "type": "shell",
             "command": "gcc",
             "args": [
