@@ -82,38 +82,48 @@ void write_field(char *currentfield, int width, int height, int timestep)
 #endif
 }
 
-void evolve(char *currentfield, char *newfield, int width, int height)
+void evolve(char *currentfield, char *newfield, int width, int height, int regions_x, int regions_y)
 {
   // TODO traverse through each voxel and implement game of live logic
   // HINT: avoid boundaries
 
-  for (int y = 1; y <= height - 2; y++)
+
+  int region_width = width / regions_x;
+  int region_height = height / regions_y;
+  int omp_threads = regions_x * regions_y;
+  #pragma omp parallel num_threads(omp_threads)
   {
-    int x;
-    #pragma omp parallel for private(x)
-    for (x = 1; x <= width - 2; x++)
+    int this_thread = omp_get_thread_num();
+    //int num_threads = omp_get_num_threads();
+    int my_start_y = ((this_thread)/regions_x) * region_height + 1;
+    int my_end_y   = ((this_thread)/regions_x) * region_height + region_height;
+    int my_start_x = ((this_thread) %  regions_x) * region_width + 1;
+    int my_end_x   = ((this_thread) %  regions_x) * region_width + region_width;
+    //printf("DEBUG: region %d: start:(%d,%d) end: (%d,%d).\n", this_thread,my_start_x, my_start_y, my_end_x, my_end_y);
+    for(int y = my_start_y; y <= my_end_y; y++)
     {
-      int neighbors = 0;     
-      int xy_index = calcIndex(width, x, y);
-      for (int j = y - 1; j <= y + 1; j++)
+      for (int x = my_start_x; x <= my_end_x; x++)
       {
-        for (int i = x - 1; i <= x + 1; i++)
+        int neighbors = 0;     
+        int xy_index = calcIndex(width, x, y);
+        for (int j = y - 1; j <= y + 1; j++)
         {
-          int ij_index = calcIndex(width, i, j);
-          if (currentfield[ij_index] == 1 && ij_index != xy_index)
-            neighbors++;
+          for (int i = x - 1; i <= x + 1; i++)
+          {
+            int ij_index = calcIndex(width, i, j);
+            if (currentfield[ij_index] == 1 && ij_index != xy_index)
+              neighbors++;
+          }
         }
+        if (neighbors < 2)
+          newfield[xy_index] = DEAD;
+        else if (neighbors == 2)
+          newfield[xy_index] = currentfield[xy_index];
+        else if (neighbors == 3)
+          newfield[xy_index] = ALIVE;
+        else
+          newfield[xy_index] = DEAD;
       }
-      if (neighbors < 2)
-        newfield[xy_index] = DEAD;
-      else if (neighbors == 2)
-        newfield[xy_index] = currentfield[xy_index];
-      else if (neighbors == 3)
-        newfield[xy_index] = ALIVE;
-      else
-        newfield[xy_index] = DEAD;
-      //if (neighbors > 0)
-      //  printf("cell %d,%d has %d neighbors.\n", x,y,neighbors);
     }
   }
 }
@@ -149,7 +159,7 @@ void filling_rpentomino(char *currentfield, int width, int height)
   currentfield[calcIndex(width, width / 2 + 2, height / 2 + 2)] = ALIVE;
 }
 
-void game(int width, int height, int num_timesteps)
+void game(int width, int height, int num_timesteps, int regions_x, int regions_y)
 {
   char *currentfield = calloc(width * height, sizeof(char));
   char *newfield = calloc(width * height, sizeof(char));
@@ -164,7 +174,7 @@ void game(int width, int height, int num_timesteps)
   for (time = 1; time <= num_timesteps; time++)
   {
     // TODO 2: implement evolve function (see above)
-    evolve(currentfield, newfield, width, height);
+    evolve(currentfield, newfield, width, height, regions_x, regions_y);
 
     // apply periodic boundary condition
     int ci;
@@ -202,12 +212,14 @@ void game(int width, int height, int num_timesteps)
 
 int main(int c, char **v)
 {
-  int width = 0, height = 0, num_timesteps;
-  if (c == 4)
+  int width = 0, height = 0, num_timesteps, regions_x, regions_y;
+  if (c == 6)
   {
     width = atoi(v[1]) + 2;     ///< read width + 2 boundary cells (low x, high x)
     height = atoi(v[2]) + 2;    ///< read height + 2 boundary cells (low y, high y)
     num_timesteps = atoi(v[3]); ///< read timesteps
+    regions_x = atoi(v[4]); ///< read subspaces in x
+    regions_y = atoi(v[5]); ///< read subspaces in y
     if (width <= 0)
     {
       width = 32; ///< default width
@@ -216,7 +228,7 @@ int main(int c, char **v)
     {
       height = 32; ///< default height
     }
-    game(width, height, num_timesteps);
+    game(width, height, num_timesteps, regions_x, regions_y);
   }
   else
   {
