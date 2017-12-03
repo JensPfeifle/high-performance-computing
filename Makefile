@@ -8,5 +8,5 @@ gameoflife: gameoflife.c
 
 #heat_equation build depends on heat_equation.c
 heat_equation: heat_equation.c
-	gcc -O3 -I/usr/include/libpng12 -lpng -std=gnu99 -o heat_equation heat_equation.c
-	rm -r heq
+	gcc -O3 -I/usr/include/libpng12  -std=gnu99 -o heat_equation heat_equation.c -lpng
+	#rm -r heq
