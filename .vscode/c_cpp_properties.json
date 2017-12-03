@@ -28,7 +28,8 @@
             "includePath": [
                 "${workspaceRoot}",
                 "/usr/include/",
-                "/usr/lib/gcc/x86_64-linux-gnu/5/include"
+                "/usr/lib/gcc/x86_64-linux-gnu/5/include",
+                "/usr/include/x86_64-linux-gnu/"
             ],
             "defines": [],
             "intelliSenseMode": "clang-x64",

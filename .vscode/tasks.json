@@ -17,6 +17,21 @@
             },
             // Use the standard MS compiler pattern to detect errors, warnings and infos
             "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "build heatequation",
+            "type": "shell",
+            "command": "gcc",
+            "args": [
+                "-O3", "-L/usr/include/libpng12", "-lpng", "-std=gnu99", "-oheat_equation", "heat_equation.c"
+            ],
+            "group": "build",
+            "presentation": {
+                // Reveal the output only if unrecognized errors occur.
+                "reveal": "silent"
+            },
+            // Use the standard MS compiler pattern to detect errors, warnings and infos
+            "problemMatcher": "$msCompile"
         }
     ]
 }
