@@ -95,12 +95,11 @@ void evolve(char *currentfield, char *newfield, int width, int height, int regio
   #pragma omp parallel num_threads(omp_threads)
   {
     int this_thread = omp_get_thread_num();
-    //int num_threads = omp_get_num_threads();
     int my_start_y = ((this_thread)/regions_x) * region_height + 1;
     int my_end_y   = ((this_thread)/regions_x) * region_height + region_height;
     int my_start_x = ((this_thread) %  regions_x) * region_width + 1;
     int my_end_x   = ((this_thread) %  regions_x) * region_width + region_width;
-    //printf("DEBUG: region %d: start:(%d,%d) end: (%d,%d).\n", this_thread,my_start_x, my_start_y, my_end_x, my_end_y);
+    printf("DEBUG: region %d: start:(%d,%d) end: (%d,%d).\n", this_thread,my_start_x, my_start_y, my_end_x, my_end_y);
     for(int y = my_start_y; y <= my_end_y; y++)
     {
       for (int x = my_start_x; x <= my_end_x; x++)
@@ -165,8 +164,8 @@ void game(int width, int height, int num_timesteps, int regions_x, int regions_y
   char *currentfield = calloc(width * height, sizeof(char));
   char *newfield = calloc(width * height, sizeof(char));
 
-  filling_random(currentfield, width, height);
-  //filling_runner(currentfield, width, height);
+  //filling_random(currentfield, width, height);
+  filling_runner(currentfield, width, height);
   //filling_rpentomino(currentfield, width, height);
 
   int time = 0;
