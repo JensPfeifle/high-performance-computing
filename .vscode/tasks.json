@@ -19,6 +19,21 @@
             "problemMatcher": "$msCompile"
         },
         {
+            "label": "build gameoflife_mpi",
+            "type": "shell",
+            "command": "mpicc",
+            "args": [
+                "-O3", "-Wall", "-ggdb3", "-std=gnu99", "-ogameoflife_mpi", "gameoflife_mpi.c"
+            ],
+            "group": "build",
+            "presentation": {
+                // Reveal the output only if unrecognized errors occur.
+                "reveal": "silent"
+            },
+            // Use the standard MS compiler pattern to detect errors, warnings and infos
+            "problemMatcher": "$msCompile"
+        },
+        {
             "label": "build ompgameoflife",
             "type": "shell",
             "command": "gcc",
