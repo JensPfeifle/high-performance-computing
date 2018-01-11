@@ -85,7 +85,7 @@ void write_field (char* currentfield, int width, int height, int timestep) {
     fprintf(stderr, "Cannot open file %s\n", filename);
   }
 
-  if (rank = 0):
+  //if (rank = 0):
   printf ("imhere\n");
   // Set the file view for the file handle using collective I/O                                                                 
   MPI_File_set_view(file, header_offset, MPI_CHAR, filetype, "native", MPI_INFO_NULL);
