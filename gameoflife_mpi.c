@@ -63,7 +63,7 @@ void create_vtk_header (char * header, int width, int height, int timestep) {
   strcat (header, "LOOKUP_TABLE default\n");
 }
 
-
+//   write_field (       currentfield, gsizes[X], gsizes[Y], time);
 void write_field (char* currentfield, int width, int height, int timestep) {
   if (timestep == 0){
     if(rank==0) {
@@ -78,24 +78,21 @@ void write_field (char* currentfield, int width, int height, int timestep) {
   snprintf (filename, 1024, "./gol/gol-%05d.vtk", timestep);
   MPI_Offset header_offset = (MPI_Offset)strlen(vtk_header);
   
-  // Create a new file handle for collective I/O
-  //Use the global 'file' variable.
-  
-  if ( MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &file) != MPI_SUCCESS) {
-    fprintf(stderr, "Cannot open file %s\n", filename);
-  }
-
-  //if (rank = 0):
-  printf ("imhere\n");
-  // Set the file view for the file handle using collective I/O                                                                 
-  MPI_File_set_view(file, header_offset, MPI_CHAR, filetype, "native", MPI_INFO_NULL);
-    // "native" - native format of host computer - no translation - best performance. Immer?                                              
-  // rc = ...                                                                                                                                                                 
-  // Write the data using collective I/O                                                                                                                                   
-  MPI_File_write(file, currentfield, sizeof (currentfield), MPI_CHAR, MPI_STATUS_IGNORE);                                                                             
-  // Close the file handle.                                                             
-  MPI_File_close(&file);
-  printf ("finished writing timestep %d\n", timestep);                                                           
+    // Create a new file handle for collective I/O
+    //Use the global 'file' variable.
+    //printf("global rank %d trying to open file\n", rank_global);
+    if ( MPI_File_open(workerscomm, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &file) != MPI_SUCCESS) {
+      fprintf(stderr, "Cannot open file %s\n", filename);
+    }
+    // Set the file view for the file handle using collective I/O                                                                 
+    MPI_File_set_view(file, header_offset, MPI_CHAR, filetype, "native", MPI_INFO_NULL);
+      // "native" - native format of host computer - no translation - best performance. Immer?                                              
+    // rc = ...                                                                                                                                                                 
+    // Write the data using collective I/O                                                                                                                                   
+    MPI_File_write_all(file, currentfield, 1, memtype, MPI_STATUS_IGNORE);                                                                             
+    // Close the file handle.                                                             
+    MPI_File_close(&file);
+    //printf ("finished writing timestep %d\n", timestep);                                                      
 }
 
 
@@ -154,50 +151,36 @@ void filling_runner (char * currentfield, int width, int height) {
   currentfield[calcIndex(width, width/2+2, height/2+2)] = ALIVE;
 }
 
+//   game (lsizes[X], lsizes[Y], num_timesteps, gsizes);
 void game (int width, int height, int num_timesteps, int gsizes[2]) {
+
+  width  = width  + 2   //width_with_halo
+  height = height + 2   //height_with_halo
+
   char *currentfield = calloc (width * height, sizeof(char));
   char *newfield = calloc (width * height, sizeof(char));
 
   // TODO 1: use your favorite filling
 
-  filling_runner(currentfield, width, height);
+  filling_random(currentfield, width, height);
 
   int time = 0;
   write_field (currentfield, gsizes[X], gsizes[Y], time);
-
+  
   for (time = 1; time <= num_timesteps; time++) {
+
+    // TODO - Ghost-Layer Swap - 
+
+
     // TODO 2: implement evolve function (see above)
     evolve (currentfield, newfield, width, height);
     write_field (newfield, gsizes[X], gsizes[Y], time);
-    // TODO 3: implement SWAP of the fields
-
-    // apply periodic boundary condition
-    int ci;
-    int ni;
-    for (int y = 0; y < height; y++)
-    {
-      ni = calcIndex(width, 0, y);
-      ci = calcIndex(width, width - 2, y);
-      newfield[ni] = newfield[ci];
-      ni = calcIndex(width, width - 1, y);
-      ci = calcIndex(width, 1, y);
-      newfield[ni] = newfield[ci];
-    }
-    for (int x = 0; x < width; x++)
-    {
-      ci = calcIndex(width, x, height - 2);
-      ni = calcIndex(width, x, 0);
-      newfield[ni] = newfield[ci];
-      ci = calcIndex(width, x, 1);
-      ni = calcIndex(width, x, height - 1);
-      newfield[ni] = newfield[ci];
-    }
-
     // SWAP of the fields
     char *temp = currentfield;
     currentfield = newfield;
     newfield = temp;
   }
+
 
   free (currentfield);
   free (newfield);
@@ -231,7 +214,6 @@ int main (int c, char **v) {
   }
 
 
-  
   // TODO get the global rank of the process and save it to rank_global
   MPI_Comm_rank(MPI_COMM_WORLD, &rank_global);        //-
   printf("my rank is: %d\n",rank_global);
@@ -240,7 +222,7 @@ int main (int c, char **v) {
   //printf("number of processes: %d\n",num_tasks_global);
   /* Abort if the number of processes does not match with the given configuration.
    */
-  if (num_tasks_global != (process_numX*process_numY+1)) {
+  if (num_tasks_global != (process_numX*process_numY + 1)) {
     if (rank_global == 0) {
       fprintf(stderr, "ERROR: %d MPI processes needed.\n", process_numX*process_numY+1);
     }
@@ -249,7 +231,7 @@ int main (int c, char **v) {
   }
   
 
-  MPI_Comm_group(MPI_COMM_WORLD,&basegroup);
+  MPI_Comm_group(MPI_COMM_WORLD, &basegroup);
   int ranks_to_exclude[1] = { 0 };
   MPI_Group_excl(basegroup, 1, ranks_to_exclude, &group);
   
@@ -293,30 +275,34 @@ int main (int c, char **v) {
     /* TODO Create a new cartesian communicator of the worker communicator and get the information.
     */
     int dim[2], period[2], reorder;
-    dim[0] = process_numX;
-    dim[1] = process_numY;
+    //dim is "backwards"
+    dim[0] = process_numY;
+    dim[1] = process_numX;
     period[0] = period[1] = 1;
     reorder = 0;
     MPI_Cart_create(workerscomm, 2, dim, period, reorder,  &cart_comm);
 
     // get rank and subarray coordinates in cartesian system
     int mycoords[2];
-    int rank_cart;
-    MPI_Comm_rank(cart_comm, &rank_cart);
-    MPI_Cart_coords(cart_comm, rank_cart, 2, mycoords);
+    MPI_Comm_rank(cart_comm, &rank);
+    MPI_Cart_coords(cart_comm, rank, 2, mycoords);
                                                     
     int gsizes[2] = {width, height};  // global size of the domain without boundaries              
     int lsizes[2];                    // local size of domains                                                              
 
-   
     /* TODO create and commit a subarray as a new filetype to describe the local
      *      worker field as a part of the global field. 
      *      Use the global variable 'filetype'.
      * HINT: use MPI_Type_create_subarray and MPI_Type_commit functions
     */
 
-    lsizes[0] = (gsizes[0])/process_numX;
-    lsizes[1] = (gsizes[1])/process_numY;
+
+    lsizes[0] = (width)/process_numX;
+    lsizes[1] = (height)/process_numY;
+
+    if (rank == 1) {
+      printf("lsizes = (%d,%d)\n", lsizes[0], lsizes[1]);
+    }
 
     int start_indices[2];
     start_indices[0] = mycoords[0] * lsizes[0];
@@ -324,20 +310,27 @@ int main (int c, char **v) {
     MPI_Type_create_subarray(2, gsizes, lsizes, start_indices, MPI_ORDER_C, MPI_CHAR, &filetype);
     MPI_Type_commit(&filetype);
 
+    printf("===LOCAL=== \n[WORKER %d]\ncartesian rank = %d \ncart coods = %d,%d start indices = %d,%d\n", rank_global, rank, mycoords[1], mycoords[0], start_indices[1], start_indices[0]);
+
     
     /* TODO Create a derived datatype that describes the layout of the inner local field
      *      in the memory buffer that includes the ghost layer (local field). 
      *      This is another subarray datatype!
      *      Use the global variable 'memtype'.
     */
-   
-    printf("====== \n[WORKER %d]\ncartesian rank = %d \ncart coods = %d,%d start indices = %d,%d\n", rank_global, rank_cart, mycoords[0], mycoords[1], start_indices[0], start_indices[1]);
 
+    int msizes[2];
+    msizes[0] = lsizes[0] + 2;
+    msizes[1] = lsizes[1] + 2;
 
+    start_indices[0] = start_indices[1] = 1;
+    MPI_Type_create_subarray(2, msizes, lsizes, start_indices, MPI_ORDER_C, MPI_CHAR, &memtype);
+    MPI_Type_commit(&memtype);
 
     game (lsizes[X], lsizes[Y], num_timesteps, gsizes);
+    printf("FINISHED GAME (rank %d)\n", rank_global);
     
-    if (1 == rank) {
+    if (rank == 1) {
       long buffer = 0;
       MPI_Send(&buffer, 1, MPI_LONG, 0, GOL_FINISH_TAG, MPI_COMM_WORLD);
     }
