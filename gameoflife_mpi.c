@@ -213,14 +213,17 @@ void game (int width, int height, int num_timesteps, int gsizes[2]) {
       counter++;
     }
 
-    //vertical
 
-    MPI_Sendrecv(&sendbuffer[startbuftop], width, MPI_CHAR, rt,  1, &recvbuffer[startbufbot], width, MPI_CHAR, srt, 1, cart_comm, MPI_STATUS_IGNORE);
-    MPI_Sendrecv(&sendbuffer[startbufbot], width, MPI_CHAR, srt, 2, &recvbuffer[startbuftop], width, MPI_CHAR, rt,  2, cart_comm, MPI_STATUS_IGNORE);
-    //horizontal
-    MPI_Sendrecv(&sendbuffer[startbufrit], height, MPI_CHAR, rt,  3, &recvbuffer[startbuflef], height, MPI_CHAR, srt, 3, cart_comm, MPI_STATUS_IGNORE);
-    MPI_Sendrecv(&sendbuffer[startbuflef], height, MPI_CHAR, srt, 4, &recvbuffer[startbuftop], height, MPI_CHAR, rt,  4, cart_comm, MPI_STATUS_IGNORE);
-   
+    printf("%d sending up    to %d recv from %d\n", rank, up, sup);
+      MPI_Sendrecv(&sendbuffer[startbuftop], width, MPI_CHAR, up,  1, &recvbuffer[startbufbot], width, MPI_CHAR, sup, 1, cart_comm, MPI_STATUS_IGNORE);
+    printf("%d sending down  to %d recv from %d\n", rank, dn, sdn);
+      MPI_Sendrecv(&sendbuffer[startbufbot], width, MPI_CHAR, dn, 2, &recvbuffer[startbuftop], width, MPI_CHAR, sdn,  2, cart_comm, MPI_STATUS_IGNORE);
+    printf("%d sending right to %d recv from %d\n", rank, rt, srt);
+      MPI_Sendrecv(&sendbuffer[startbufrit], height, MPI_CHAR, rt,  3, &recvbuffer[startbuflef], height, MPI_CHAR, srt, 3, cart_comm, MPI_STATUS_IGNORE);
+    printf("%d sending left  to %d recv from %d\n", rank, lt, slt);
+      MPI_Sendrecv(&sendbuffer[startbuflef], height, MPI_CHAR, lt, 4, &recvbuffer[startbufrit], height, MPI_CHAR, slt,  4, cart_comm, MPI_STATUS_IGNORE);
+    
+    
     //copy from recvbuffer to border of currentfield
     int topi, boti, riti, lefi;
     counter = 0;
@@ -243,6 +246,7 @@ void game (int width, int height, int num_timesteps, int gsizes[2]) {
       //left
       lefi = calcIndex(width, 0, y);
       currentfield[lefi] = recvbuffer[startbuflef + counter];
+      counter++;
     }
 
     evolve (currentfield, newfield, width, height);
