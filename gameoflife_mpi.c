@@ -188,7 +188,7 @@ void game (int width, int height, int num_timesteps, int gsizes[2]) {
     int startbuflef = 2*width + height;
     int startbufrit = 2*width;
 
-    //fill send buffers appropriately
+    //fill send buffers from inner currentfield
     int upi, dni, lti, rti;
     int counter = 0;
     for (int x = 0; x < width; x++)
@@ -221,17 +221,17 @@ void game (int width, int height, int num_timesteps, int gsizes[2]) {
     MPI_Sendrecv(&sendbuffer[startbufrit], height, MPI_CHAR, rt,  3, &recvbuffer[startbuflef], height, MPI_CHAR, srt, 3, cart_comm, MPI_STATUS_IGNORE);
     MPI_Sendrecv(&sendbuffer[startbuflef], height, MPI_CHAR, srt, 4, &recvbuffer[startbuftop], height, MPI_CHAR, rt,  4, cart_comm, MPI_STATUS_IGNORE);
    
-    //copy from recvbuffer to newfield (not currentfield!)
+    //copy from recvbuffer to border of currentfield
     int topi, boti, riti, lefi;
     counter = 0;
     for (int x = 0; x < width; x++)
     {
       //top
       topi = calcIndex(width, x, height-1);
-      newfield[topi] = recvbuffer[startbuftop + counter];
+      currentfield[topi] = recvbuffer[startbuftop + counter];
       //bottom
       boti = calcIndex(width, x, 0);
-      newfield[boti] = recvbuffer[startbufbot +  counter];
+      currentfield[boti] = recvbuffer[startbufbot +  counter];
       counter++;
     }
     counter = 0;
@@ -239,11 +239,12 @@ void game (int width, int height, int num_timesteps, int gsizes[2]) {
     {
       //right
       riti = calcIndex(width, width-1, y);
-      newfield[riti] = recvbuffer[startbufrit + counter];
+      currentfield[riti] = recvbuffer[startbufrit + counter];
       //left
       lefi = calcIndex(width, 0, y);
-      newfield[lefi] = recvbuffer[startbuflef + counter];
+      currentfield[lefi] = recvbuffer[startbuflef + counter];
     }
+
     evolve (currentfield, newfield, width, height);
     write_field (newfield, gsizes[X], gsizes[Y], time);
     // SWAP of the fields
