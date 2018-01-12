@@ -84,6 +84,10 @@ void write_field (char* currentfield, int width, int height, int timestep) {
     if ( MPI_File_open(workerscomm, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &file) != MPI_SUCCESS) {
       fprintf(stderr, "Cannot open file %s\n", filename);
     }
+
+    if (rank==0) {
+      MPI_File_write(file, vtk_header, strlen(vtk_header), MPI_CHAR,MPI_STATUS_IGNORE);
+    }
     // Set the file view for the file handle using collective I/O                                                                 
     MPI_File_set_view(file, header_offset, MPI_CHAR, filetype, "native", MPI_INFO_NULL);
       // "native" - native format of host computer - no translation - best performance. Immer?                                              
@@ -154,22 +158,22 @@ void filling_runner (char * currentfield, int width, int height) {
 //   game (lsizes[X], lsizes[Y], num_timesteps, gsizes);
 void game (int width, int height, int num_timesteps, int gsizes[2]) {
 
-  width  = width  + 2   //width_with_halo
-  height = height + 2   //height_with_halo
+  width  = width  + 2;   //width_with_halo
+  height = height + 2;   //height_with_halo
 
   char *currentfield = calloc (width * height, sizeof(char));
   char *newfield = calloc (width * height, sizeof(char));
 
   // TODO 1: use your favorite filling
 
-  filling_random(currentfield, width, height);
+  filling_runner(currentfield, width, height);
 
   int time = 0;
   write_field (currentfield, gsizes[X], gsizes[Y], time);
   
   for (time = 1; time <= num_timesteps; time++) {
 
-    // TODO - Ghost-Layer Swap - 
+    // TODO - Ghost-Layer Swap
 
 
     // TODO 2: implement evolve function (see above)
