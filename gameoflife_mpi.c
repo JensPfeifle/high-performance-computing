@@ -148,11 +148,11 @@ void filling_random (char * currentfield, int width, int height) {
 }
 
 void filling_runner (char * currentfield, int width, int height) {
-  currentfield[calcIndex(width, width/2+0, height/2+1)] = ALIVE;
-  currentfield[calcIndex(width, width/2+1, height/2+2)] = ALIVE;
-  currentfield[calcIndex(width, width/2+2, height/2+0)] = ALIVE;
-  currentfield[calcIndex(width, width/2+2, height/2+1)] = ALIVE;
-  currentfield[calcIndex(width, width/2+2, height/2+2)] = ALIVE;
+  currentfield[calcIndex(width, width/2+0, height/2+1+5)] = ALIVE;
+  currentfield[calcIndex(width, width/2+1, height/2+2+5)] = ALIVE;
+  currentfield[calcIndex(width, width/2+2, height/2+0+5)] = ALIVE;
+  currentfield[calcIndex(width, width/2+2, height/2+1+5)] = ALIVE;
+  currentfield[calcIndex(width, width/2+2, height/2+2+5)] = ALIVE;
 }
 
 //   game (lsizes[X], lsizes[Y], num_timesteps, gsizes);
@@ -173,10 +173,77 @@ void game (int width, int height, int num_timesteps, int gsizes[2]) {
   
   for (time = 1; time <= num_timesteps; time++) {
 
-    // TODO - Ghost-Layer Swap
+    //get ranks of neighbors
+    int up, dn, lt, rt;
+    int sup, sdn, slt, srt;
+    MPI_Cart_shift(cart_comm, 0,  1, &sup, &up );
+    MPI_Cart_shift(cart_comm, 0, -1, &sdn, &dn );
+    MPI_Cart_shift(cart_comm, 1, -1, &slt, &lt );
+    MPI_Cart_shift(cart_comm, 1,  1, &srt, &rt );
 
+    char *sendbuffer = calloc(2*height + 2*width, sizeof(char));
+    char *recvbuffer = calloc(2*height + 2*width, sizeof(char));
+    int startbuftop = 0;
+    int startbufbot = width;
+    int startbuflef = 2*width + height;
+    int startbufrit = 2*width;
 
-    // TODO 2: implement evolve function (see above)
+    //fill send buffers appropriately
+    int upi, dni, lti, rti;
+    int counter = 0;
+    for (int x = 0; x < width; x++)
+    {
+      //top
+      upi = calcIndex(width, x, height-2);
+      sendbuffer[startbuftop + counter] = currentfield[upi];
+      //bottom
+      dni = calcIndex(width, x, 1);
+      sendbuffer[startbufbot +  counter] = currentfield[dni];
+      counter++;
+    }
+    counter = 0;
+    for (int y = 0; y < height; y++)
+    {
+      //right
+      rti = calcIndex(width, width-2, y);
+      sendbuffer[startbufrit + counter] = currentfield[rti];
+      //left
+      lti = calcIndex(width, 1, y);
+      sendbuffer[startbuflef + counter] = currentfield[lti];
+      counter++;
+    }
+
+    //vertical
+
+    MPI_Sendrecv(&sendbuffer[startbuftop], width, MPI_CHAR, rt,  1, &recvbuffer[startbufbot], width, MPI_CHAR, srt, 1, cart_comm, MPI_STATUS_IGNORE);
+    MPI_Sendrecv(&sendbuffer[startbufbot], width, MPI_CHAR, srt, 2, &recvbuffer[startbuftop], width, MPI_CHAR, rt,  2, cart_comm, MPI_STATUS_IGNORE);
+    //horizontal
+    MPI_Sendrecv(&sendbuffer[startbufrit], height, MPI_CHAR, rt,  3, &recvbuffer[startbuflef], height, MPI_CHAR, srt, 3, cart_comm, MPI_STATUS_IGNORE);
+    MPI_Sendrecv(&sendbuffer[startbuflef], height, MPI_CHAR, srt, 4, &recvbuffer[startbuftop], height, MPI_CHAR, rt,  4, cart_comm, MPI_STATUS_IGNORE);
+   
+    //copy from recvbuffer to newfield (not currentfield!)
+    int topi, boti, riti, lefi;
+    counter = 0;
+    for (int x = 0; x < width; x++)
+    {
+      //top
+      topi = calcIndex(width, x, height-1);
+      newfield[topi] = recvbuffer[startbuftop + counter];
+      //bottom
+      boti = calcIndex(width, x, 0);
+      newfield[boti] = recvbuffer[startbufbot +  counter];
+      counter++;
+    }
+    counter = 0;
+    for (int y = 0; y < height; y++)
+    {
+      //right
+      riti = calcIndex(width, width-1, y);
+      newfield[riti] = recvbuffer[startbufrit + counter];
+      //left
+      lefi = calcIndex(width, 0, y);
+      newfield[lefi] = recvbuffer[startbuflef + counter];
+    }
     evolve (currentfield, newfield, width, height);
     write_field (newfield, gsizes[X], gsizes[Y], time);
     // SWAP of the fields
@@ -186,8 +253,8 @@ void game (int width, int height, int num_timesteps, int gsizes[2]) {
   }
 
 
-  free (currentfield);
-  free (newfield);
+  //free (currentfield);
+  //free (newfield);
 }
 
 int main (int c, char **v) {
@@ -332,6 +399,19 @@ int main (int c, char **v) {
     MPI_Type_commit(&memtype);
 
     game (lsizes[X], lsizes[Y], num_timesteps, gsizes);
+
+    //test cart_shift
+    /*
+    int up, dn, lt, rt;
+    int sup,sdn, slt, srt;
+    MPI_Cart_shift(cart_comm, 0,  1, &sup, &up );
+    MPI_Cart_shift(cart_comm, 0, -1, &sdn, &dn );
+    MPI_Cart_shift(cart_comm, 1, -1, &slt, &lt );
+    MPI_Cart_shift(cart_comm, 1,  1, &srt, &rt );
+    printf("Cartesian rank %d: up = %d,dn = %d,lt = %d,rt = %d\n", rank, up, dn, lt, rt);
+    printf("Cartesian rank %d: sup = %d,sdn = %d,slt = %d,srt = %d\n", rank, sup, sdn, slt, srt);
+    */
+    MPI_Barrier(cart_comm);
     printf("FINISHED GAME (rank %d)\n", rank_global);
     
     if (rank == 1) {
