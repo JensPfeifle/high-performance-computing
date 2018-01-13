@@ -81,6 +81,8 @@ void write_field (char* currentfield, int width, int height, int timestep) {
     // Create a new file handle for collective I/O
     //Use the global 'file' variable.
     //printf("global rank %d trying to open file\n", rank_global);
+
+    MPI_File_delete(filename, MPI_INFO_NULL);
     if ( MPI_File_open(workerscomm, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &file) != MPI_SUCCESS) {
       fprintf(stderr, "Cannot open file %s\n", filename);
     }
@@ -166,7 +168,7 @@ void game (int width, int height, int num_timesteps, int gsizes[2]) {
 
   // TODO 1: use your favorite filling
 
-  filling_runner(currentfield, width, height);
+  filling_random(currentfield, width, height);
 
   int time = 0;
   write_field (currentfield, gsizes[X], gsizes[Y], time);
@@ -214,13 +216,13 @@ void game (int width, int height, int num_timesteps, int gsizes[2]) {
     }
 
 
-    printf("%d sending up    to %d recv from %d\n", rank, up, sup);
+    //printf("%d sending up    to %d recv from %d\n", rank, up, sup);
       MPI_Sendrecv(&sendbuffer[startbuftop], width, MPI_CHAR, up,  1, &recvbuffer[startbufbot], width, MPI_CHAR, sup, 1, cart_comm, MPI_STATUS_IGNORE);
-    printf("%d sending down  to %d recv from %d\n", rank, dn, sdn);
+    //printf("%d sending down  to %d recv from %d\n", rank, dn, sdn);
       MPI_Sendrecv(&sendbuffer[startbufbot], width, MPI_CHAR, dn, 2, &recvbuffer[startbuftop], width, MPI_CHAR, sdn,  2, cart_comm, MPI_STATUS_IGNORE);
-    printf("%d sending right to %d recv from %d\n", rank, rt, srt);
+    //printf("%d sending right to %d recv from %d\n", rank, rt, srt);
       MPI_Sendrecv(&sendbuffer[startbufrit], height, MPI_CHAR, rt,  3, &recvbuffer[startbuflef], height, MPI_CHAR, srt, 3, cart_comm, MPI_STATUS_IGNORE);
-    printf("%d sending left  to %d recv from %d\n", rank, lt, slt);
+    //printf("%d sending left  to %d recv from %d\n", rank, lt, slt);
       MPI_Sendrecv(&sendbuffer[startbuflef], height, MPI_CHAR, lt, 4, &recvbuffer[startbufrit], height, MPI_CHAR, slt,  4, cart_comm, MPI_STATUS_IGNORE);
     
     
@@ -373,21 +375,21 @@ int main (int c, char **v) {
     */
 
 
-    lsizes[0] = (width)/process_numX;
-    lsizes[1] = (height)/process_numY;
+    lsizes[1] = (width)/process_numX;
+    lsizes[0] = (height)/process_numY;
 
     if (rank == 1) {
       printf("lsizes = (%d,%d)\n", lsizes[0], lsizes[1]);
     }
 
     int start_indices[2];
-    start_indices[0] = mycoords[0] * lsizes[0];
     start_indices[1] = mycoords[1] * lsizes[1];
+    start_indices[0] = mycoords[0] * lsizes[0];
     MPI_Type_create_subarray(2, gsizes, lsizes, start_indices, MPI_ORDER_C, MPI_CHAR, &filetype);
     MPI_Type_commit(&filetype);
 
     printf("===LOCAL=== \n[WORKER %d]\ncartesian rank = %d \ncart coods = %d,%d start indices = %d,%d\n", rank_global, rank, mycoords[1], mycoords[0], start_indices[1], start_indices[0]);
-
+    
     
     /* TODO Create a derived datatype that describes the layout of the inner local field
      *      in the memory buffer that includes the ghost layer (local field). 
@@ -401,7 +403,7 @@ int main (int c, char **v) {
 
     start_indices[0] = start_indices[1] = 1;
     MPI_Type_create_subarray(2, msizes, lsizes, start_indices, MPI_ORDER_C, MPI_CHAR, &memtype);
-    MPI_Type_commit(&memtype);
+    MPI_Type_commit(&memtype);;
 
     game (lsizes[X], lsizes[Y], num_timesteps, gsizes);
 
