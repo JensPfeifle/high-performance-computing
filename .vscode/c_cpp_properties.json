@@ -28,7 +28,8 @@
             "includePath": [
                 "${workspaceRoot}",
                 "/usr/include/",
-                "/usr/lib/gcc/x86_64-linux-gnu/5/include"
+                "/usr/lib/gcc/x86_64-linux-gnu/5/include",
+                "/usr/lib/openmpi/include"
             ],
             "defines": [],
             "intelliSenseMode": "clang-x64",

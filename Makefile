@@ -6,6 +6,9 @@ all: gameoflife
 gameoflife: gameoflife.c
 	gcc -O3 -std=gnu99 -o gameoflife gameoflife.c
 
+ompgameoflife: gameoflife.c
+	gcc -g -O0 -Wall -ggdb3 -fopenmp -o gameoflife gameoflife.c
+
 #heat_equation build depends on heat_equation.c
 heat_equation: heat_equation.c
 	gcc -O3 -I/usr/include/libpng12 -lpng -std=gnu99 -o heat_equation heat_equation.c
